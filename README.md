@@ -843,6 +843,141 @@ export PUB_HOSTED_URL=https://nora-apatsev.duckdns.org/pub
 dart pub get
 ```
 
+## Защита от supply chain атак
+
+NORA включает многоуровневую защиту от атак на цепочку поставок — ситуаций, когда скомпрометированный пакет из публичного реестра попадает в production через ваш приватный registry. Яркий пример — 31 марта 2026 года группа DPRK Sapphire Sleet перехватила контроль над npm-пакетом axios (100 млн загрузок в неделю), опубликовав вредоносную версию 1.14.1. Окно атаки составило всего 3 часа, но могло затронуть миллионы проектов.
+
+### Min Release Age — блокировка свежих пакетов
+
+Одна строка в конфиге блокирует пакеты, опубликованные менее N дней назад. Большинство вредоносных пакетов обнаруживаются в течение 1–3 дней, поэтому 7 дней — безопасный буфер. Аналогичная функция есть в `.npmrc` (`min-release-age=7`) и `uv.toml` (`exclude-newer = "7 days"`), но NORA поддерживает все 13 форматов реестров и per-registry переопределения.
+
+**Настройка в `helm-values.yaml` (секция `config.curation`):**
+
+```yaml
+config:
+  curation:
+    mode: "enforce"
+    min_release_age: "7d"
+    npm:
+      min_release_age: "3d"
+    pypi:
+      min_release_age: "5d"
+```
+
+Поддерживаемые форматы длительности: `7d` (дни), `24h` (часы), `1w` (недели), `1w2d` (комбинации).
+
+**Как это работает:**
+
+- **Извлечение даты публикации** — реальные даты из кэшированных метаданных: npm `time`, PyPI `upload-time`, Cargo, Go, NuGet, Conan, pub.dev, Maven Central, RubyGems, Ansible Galaxy, Terraform. NORA проверяет дату публикации пакета при каждом запросе на скачивание и сравнивает её с текущим временем.
+- **Digest quarantine** — для реестров без дат публикации (Docker/OCI) NORA отслеживает первый момент появления каждого content digest. Новые digest удерживаются в карантине до истечения порога. Это невозможно подменить — используется часы самой NORA, а не unsigned upstream дата.
+- **Fail-closed** — если дата публикации неизвестна и карантин активен, пакет блокируется (не пропускается).
+- **Bypass token** — заголовок `X-Nora-Bypass-Token` для экстренных случаев (сравнение в constant-time).
+
+### CVE Blocking — блокировка известно-уязвимых пакетов
+
+NORA позволяет блокировать пакеты с известными CVE через механизм blocklist. Это не автоматическое сканирование CVE (как Trivy или Snyk), а управляемый список запрещённых пакетов, который можно заполнять вручную или экспортировать из баз уязвимостей:
+
+```json
+{
+  "version": 1,
+  "rules": [
+    {
+      "registry": "npm",
+      "name": "event-stream",
+      "version": "3.3.6",
+      "reason": "CVE-2018-16396 — malicious flatmap-stream dependency"
+    },
+    {
+      "registry": "*",
+      "name": "log4j*",
+      "version": "2.*",
+      "reason": "CVE-2021-44228 — Log4Shell RCE"
+    }
+  ]
+}
+```
+
+Правила поддерживают glob-паттерны (`*`, `foo*`, `*foo`, `foo.**` для Maven groupId, `foo/**` для Go модулей) и работают со всеми 13 форматами реестров.
+
+**Включение в `helm-values.yaml`:**
+
+Blocklist поддерживается только как JSON-файл. Создаём ConfigMap и монтируем в под:
+
+```bash
+cat <<'EOF' > blocklist.json
+{
+  "version": 1,
+  "rules": [
+    {
+      "registry": "npm",
+      "name": "event-stream",
+      "version": "3.3.6",
+      "reason": "CVE-2018-16396 — malicious flatmap-stream dependency"
+    },
+    {
+      "registry": "*",
+      "name": "log4j*",
+      "version": "2.*",
+      "reason": "CVE-2021-44228 — Log4Shell RCE"
+    }
+  ]
+}
+EOF
+
+# Создаём ConfigMap
+kubectl create configmap nora-blocklist \
+  --from-file=blocklist.json=blocklist.json
+```
+
+Монтируем через Deployment patch (`nora-blocklist-patch.yaml`):
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nora
+spec:
+  template:
+    spec:
+      containers:
+        - name: nora
+          volumeMounts:
+            - name: blocklist
+              mountPath: /etc/nora/blocklist.json
+              subPath: blocklist.json
+              readOnly: true
+      volumes:
+        - name: blocklist
+          configMap:
+            name: nora-blocklist
+```
+
+```bash
+kubectl patch deployment nora --type=merge --patch-file=nora-blocklist-patch.yaml
+```
+
+В `helm-values.yaml` указываем путь:
+
+```yaml
+config:
+  curation:
+    mode: "enforce"
+    blocklist_path: "/etc/nora/blocklist.json"
+```
+
+Правила поддерживают glob-паттерны (`*`, `foo*`, `*foo`, `foo.**` для Maven groupId, `foo/**` для Go модулей) и работают со всеми 13 форматами реестров.
+
+В режиме `audit` совпадения логируются, но не блокируются — удобно для dry-run перед включением в production.
+
+### Дополнительные уровни защиты
+
+- **Allowlist** — режим default-deny: только явно перечисленные `(registry, name, version)` проходят, с опциональным SHA-256 пиннингом целостности.
+- **Изоляция пространств имён** — работает всегда, даже в режиме `off`. Предотвращает dependency confusion — внутренние имена пакетов никогда не проксируются в upstream реестры.
+- **Проверка целостности** — SHA-256/SHA-512 checksums проверяются при каждой загрузке, compile-time typestate гарантирует целостность отдаваемых байтов.
+- **Bypass token** — заголовок `X-Nora-Bypass-Token` с constant-time сравнением для экстренного обхода curation.
+
+Все эти механизмы настраиваются через переменные окружения, TOML-конфиг или YAML в Helm values, и работают поверх существующей proxy/cache архитектуры NORA без дополнительных зависимостей.
+
 ## Air-gapped: работа в изолированных средах
 
 NORA имеет встроенную утилиту `nora mirror` для предварительного кэширования зависимостей. Это критично для сред без доступа в интернет.
@@ -1035,7 +1170,7 @@ NORA — это современная альтернатива Nexus, Artifacto
 - **Простота** — один бинарник, один конфиг, одна PVC. `cp -r /data/ backup/` — полный бэкап.
 - **Производительность** — < 3 секунды на старт, < 50 МБ RAM. Rust, Tokio, Axum.
 - **13 форматов** — Docker, Maven, npm, PyPI, Cargo, Go, Raw, RubyGems, Terraform, Ansible, NuGet, Pub, Conan.
-- **Безопасность** — OpenSSF Scorecard, подписанные релизы, SBOM, 1200+ тестов.
+- **Безопасность** — OpenSSF Scorecard, подписанные релизы, SBOM, 1200+ тестов, блокировка свежих пакетов (min-release-age), CVE blocklist, digest quarantine, namespace isolation.
 - **Air-gapped ready** — встроенное зеркалирование для изолированных сред.
 
 Репозиторий с Terraform-кодом для этой статьи: [github.com/patsevanton/nora-habr](https://github.com/patsevanton/nora-habr)
