@@ -425,21 +425,31 @@ open https://nora-apatsev.duckdns.org/ui/
 
 После этого NORA доступна по адресу `https://nora-apatsev.duckdns.org`. Web UI покажет dashboard с 13 реестрами.
 
-### Использование токенов
+### Создание и использование токенов
+
+NORA использует API-токены с префиксом `nra_` вместо эндпоинта `/auth/token` (который есть в Docker Hub / GHCR, но отсутствует в NORA).
 
 ```bash
-# Получить токен
-curl -u admin:password https://nora-apatsev.duckdns.org/auth/token
-# {"token": "nora_tk_abc123..."}
+# Создать токен
+curl -X POST https://nora-apatsev.duckdns.org/api/tokens \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "your-password",
+    "role": "write",
+    "ttl_days": 90,
+    "description": "CI/CD pipeline token"
+  }'
+# {"token": "nra_a1b2c3d4e5f6...", "expires_in_days": 90}
 
 # Использовать токен для npm
-npm config set //nora-apatsev.duckdns.org:_authToken nora_tk_abc123
+npm config set //nora-apatsev.duckdns.org:_authToken nra_a1b2c3d4e5f6
 
-# Docker login
-docker login nora-apatsev.duckdns.org -u admin -p nora_tk_abc123
+# Docker login с токеном (токен в качестве пароля, любое имя пользователя)
+docker login nora-apatsev.duckdns.org -u token -p nra_a1b2c3d4e5f6
 
-# curl
-curl -H "Authorization: Bearer nora_tk_abc123" \
+# curl с Bearer-токеном
+curl -H "Authorization: Bearer nra_a1b2c3d4e5f6" \
   https://nora-apatsev.duckdns.org/v2/_catalog
 ```
 
@@ -448,10 +458,29 @@ curl -H "Authorization: Bearer nora_tk_abc123" \
 NORA поддерживает три роли: `read` (чтение), `write` (чтение + запись), `admin` (всё + управление токенами). Токены создаются через API:
 
 ```bash
-curl -X POST -u admin:password \
+curl -X POST https://nora-apatsev.duckdns.org/api/tokens \
   -H "Content-Type: application/json" \
-  -d '{"name": "ci-bot", "role": "write"}' \
-  https://nora-apatsev.duckdns.org/api/v1/tokens
+  -d '{
+    "username": "admin",
+    "password": "your-password",
+    "role": "write",
+    "ttl_days": 90,
+    "description": "ci-bot"
+  }'
+```
+
+Список и отзыв токенов:
+
+```bash
+# Список токенов
+curl -X POST https://nora-apatsev.duckdns.org/api/tokens/list \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your-password"}'
+
+# Отзыв токена (по hash_prefix из списка)
+curl -X POST https://nora-apatsev.duckdns.org/api/tokens/revoke \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your-password", "hash_prefix": "a1b2c3"}'
 ```
 
 ## Использование: примеры для каждого формата
