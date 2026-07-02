@@ -268,9 +268,10 @@ helm install cert-manager jetstack/cert-manager \
 
 ```bash
 kubectl get pods -n cert-manager
-# cert-manager-xxx            1/1     Running
-# cert-manager-cainjector-xxx 1/1     Running
-# cert-manager-webhook-xxx    1/1     Running
+# cert-manager-xxx                    1/1     Running
+# cert-manager-cainjector-xxx         1/1     Running
+# cert-manager-startupapicheck-xxx    0/1     Completed
+# cert-manager-webhook-xxx            1/1     Running
 ```
 
 ### Создаём ClusterIssuer
