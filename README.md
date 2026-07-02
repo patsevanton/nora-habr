@@ -340,27 +340,6 @@ kubectl describe certificate nora-tls
 openssl s_client -connect nora.apatsev.org.ru:443 -servername nora.apatsev.org.ru < /dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 ```
 
-### Staging-сертификат (для тестирования)
-
-Для тестирования можно использовать staging Let's Encrypt, чтобы не попасть в rate limit:
-
-```yaml
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: letsencrypt-staging
-spec:
-  acme:
-    server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: admin@apatsev.org.ru
-    privateKeySecretRef:
-      name: letsencrypt-staging-key
-    solvers:
-      - http01:
-          ingress:
-            class: nginx
-```
-
 ## Деплой NORA через Helm
 
 Инфраструктура готова — кластер работает, ingress-nginx слушает на публичном IP, cert-manager выпустит TLS-сертификат автоматически. Теперь ставим NORA.
