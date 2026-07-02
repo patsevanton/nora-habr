@@ -427,6 +427,32 @@ NORA использует API-токены с префиксом `nra_` вмес
 
 NORA поддерживает три роли: `read` (чтение), `write` (чтение + запись), `admin` (всё + управление токенами).
 
+### Создание и использование токенов
+
+```bash
+# Создать токен
+curl -X POST https://nora-apatsev.duckdns.org/api/tokens \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "your-password",
+    "role": "write",
+    "ttl_days": 90,
+    "description": "CI/CD pipeline token"
+  }'
+# {"token": "nra_cc40a977a2b147cfa4bde58c2b193b3a...", "expires_in_days": 90}
+
+# проверка токена
+curl -H "Authorization: Bearer nra_cc40a977a2b147cfa4bde58c2b193b3a" \
+  https://nora-apatsev.duckdns.org/v2/_catalog
+
+# Использовать токен для npm
+npm config set //nora-apatsev.duckdns.org:_authToken nra_cc40a977a2b147cfa4bde58c2b193b3a
+
+# Docker login с токеном (токен в качестве пароля, любое имя пользователя)
+docker login nora-apatsev.duckdns.org -u token -p nra_cc40a977a2b147cfa4bde58c2b193b3a
+```
+
 ## Использование: примеры для каждого формата
 
 ### Docker
