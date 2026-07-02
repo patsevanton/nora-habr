@@ -656,6 +656,9 @@ mvn deploy -s settings.xml
 Helm-чарты хранятся через Docker/OCI endpoint. Для тестирования создайте и запакуйте чарт (директория `test-helm-pkg` уже есть в репозитории):
 
 ```bash
+# Авторизация в реестре
+helm registry login nora-apatsev.duckdns.org -u admin -p your-password
+
 # Создаём чарт (если ещё нет)
 cd test-helm-pkg
 helm create mychart
