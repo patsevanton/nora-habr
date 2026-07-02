@@ -49,3 +49,4 @@ package-lock.json
 users.htpasswd
 package.json
 test-npm-pkg/.npmrc
+python-pkg-example/dist/*
