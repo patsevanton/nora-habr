@@ -275,9 +275,8 @@ kubectl get pods -n cert-manager
 
 ### Создаём ClusterIssuer
 
-Файл `cluster-issuer.yaml` уже лежит в репозитории:
-
-```yaml
+```bash
+cat <<EOF > cluster-issuer.yaml
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -292,11 +291,8 @@ spec:
       - http01:
           ingress:
             class: nginx
-```
+EOF
 
-Применяем:
-
-```bash
 kubectl apply -f cluster-issuer.yaml
 ```
 
