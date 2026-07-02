@@ -440,8 +440,6 @@ NORA использует API-токены с префиксом `nra_` вмес
 
 NORA поддерживает три роли: `read` (чтение), `write` (чтение + запись), `admin` (всё + управление токенами).
 
-### Создание и использование токенов
-
 ```bash
 # Создать токен
 curl -X POST https://nora-apatsev.duckdns.org/api/tokens \
@@ -938,14 +936,16 @@ cat <<'EOF' > blocklist.json
 EOF
 ```
 
-# Создаём ConfigMap для blocklist
-```
+Создаём ConfigMap для blocklist:
+
+```bash
 kubectl create configmap nora-blocklist \
   --from-file=blocklist.json=blocklist.json
 ```
 
 Пример `allowlist.json`:
 
+```bash
 cat <<'EOF' > allowlist.json
 {
   "version": 1,
@@ -967,8 +967,9 @@ cat <<'EOF' > allowlist.json
 EOF
 ```
 
-# Создаём ConfigMap для allowlist (опционально)
-```
+Создаём ConfigMap для allowlist (опционально):
+
+```bash
 kubectl create configmap nora-allowlist \
   --from-file=allowlist.json=allowlist.json
 ```
