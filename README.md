@@ -313,31 +313,6 @@ kubectl get clusterissuer letsencrypt-prod
 # letsencrypt-prod   True    10s
 ```
 
-### Настройка в Helm values NORA
-
-Настройка cert-manager в Ingress в `helm-values.yaml`:
-
-```yaml
-ingress:
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  tls:
-    - secretName: nora-tls
-      hosts:
-        - nora-apatsev.duckdns.org
-```
-
-Аннотация `cert-manager.io/cluster-issuer: letsencrypt-prod` указывает cert-manager автоматически создать Certificate-ресурс и получить сертификат через ACME HTTP-01 challenge. Сертификат сохраняется в Secret `nora-tls`.
-
-### Как это работает
-
-1. Ingress-nginx создаётся с аннотацией `cert-manager.io/cluster-issuer`
-2. cert-manager видит аннотацию и создаёт Certificate-ресурс
-3. Certificate → CertificateRequest → Order → Challenge
-4. Let's Encrypt проверяет доступ к `/.well-known/acme-challenge/` через ingress-nginx
-5. cert-manager получает сертификат и сохраняет его в Secret `nora-tls`
-6. ingress-nginx использует этот Secret для TLS-терминации
-
 ## Аутентификация
 
 По умолчанию NORA работает без аутентификации (анонимный доступ на чтение). Для включения авторизации выполните следующие шаги:
@@ -888,6 +863,15 @@ kubectl describe ingress nora
 ```
 
 Убедитесь, что `proxy-body-size` не ограничивает размер образа (в values стоит `"0"` — без ограничения).
+
+### 4. cert-manager: как это работает
+
+1. Ingress-nginx создаётся с аннотацией `cert-manager.io/cluster-issuer`
+2. cert-manager видит аннотацию и создаёт Certificate-ресурс
+3. Certificate → CertificateRequest → Order → Challenge
+4. Let's Encrypt проверяет доступ к `/.well-known/acme-challenge/` через ingress-nginx
+5. cert-manager получает сертификат и сохраняет его в Secret `nora-tls`
+6. ingress-nginx использует этот Secret для TLS-терминации
 
 ## Заключение
 
