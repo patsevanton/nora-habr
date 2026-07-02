@@ -458,9 +458,6 @@ docker login nora-apatsev.duckdns.org -u token -p nra_cc40a977a2b147cfa4bde58c2b
 ### Docker
 
 ```bash
-# Логин (если включена аутентификация)
-docker login nora-apatsev.duckdns.org
-
 # Берём готовый публичный образ (или собираем свой из Dockerfile)
 docker pull nginx:alpine
 
@@ -497,8 +494,8 @@ npm publish --registry https://nora-apatsev.duckdns.org/npm/
 ```bash
 cd test-npm-pkg
 
-# Логин (если ещё не залогинен)
-npm login --registry https://nora-apatsev.duckdns.org/npm/
+# Логин (токен в качестве пароля)
+npm set //nora-apatsev.duckdns.org/npm/:_authToken nra_cc40a977a2b147cfa4bde58c2b193b3a
 
 # Публикуем
 npm publish --registry https://nora-apatsev.duckdns.org/npm/
