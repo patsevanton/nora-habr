@@ -524,11 +524,37 @@ npm install @babel/core --registry https://nora-apatsev.duckdns.org/npm/
 ### PyPI
 
 ```bash
-# Установка пакета через NORA
-pip install --index-url https://nora-apatsev.duckdns.org/simple/ flask
+# Создаём и активируем виртуальное окружение
+python3 -m venv .venv
+source .venv/bin/activate
 
-# Публикация через twine
-twine upload --repository-url https://nora-apatsev.duckdns.org/simple/ dist/*
+# Установка пакета через NORA (с токеном)
+pip install --index-url https://token:nra_cc40a977a2b147cfa4bde58c2b193b3a@nora-apatsev.duckdns.org/simple/ flask
+
+# Публикация через twine (используем venv)
+pip install build twine
+python -m build
+twine upload --repository-url https://token:nra_cc40a977a2b147cfa4bde58c2b193b3a@nora-apatsev.duckdns.org/simple/ dist/*
+```
+
+Пример минимального Python-пакета для публикации (директория `python-pkg-example` уже есть в репозитории):
+
+```
+python-pkg-example/
+├── pyproject.toml
+├── src/
+│   └── python_pkg_example/
+│       └── __init__.py
+└── dist/                # создаётся автоматически при python -m build
+```
+
+```bash
+cd python-pkg-example
+python3 -m venv .venv
+source .venv/bin/activate
+pip install build twine
+python -m build
+twine upload --repository-url https://token:nra_cc40a977a2b147cfa4bde58c2b193b3a@nora-apatsev.duckdns.org/simple/ dist/*
 ```
 
 Для постоянной настройки создайте `~/.pip/pip.conf`:

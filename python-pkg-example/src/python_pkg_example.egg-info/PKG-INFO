@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: python-pkg-example
+Version: 0.1.0
+Summary: Example Python package
+Requires-Python: >=3.9
