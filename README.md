@@ -747,8 +747,14 @@ EOF
 Авторизация в реестре:
 
 ```bash
-cargo login --registry nora nra_cc40a977a2b147cfa4bde58c2b193b3a
+# Вариант 1: через stdin (рекомендуется для CI/CD)
+echo "nra_cc40a977a2b147cfa4bde58c2b193b3a" | cargo login --registry nora
+
+# Вариант 2: через переменную окружения
+export CARGO_REGISTRIES_NORA_TOKEN="nra_cc40a977a2b147cfa4bde58c2b193b3a"
 ```
+
+> **Примечание:** `cargo login --registry nora` требует, чтобы реестр `nora` был определён в глобальном конфиге `~/.cargo/config.toml`. Если реестр определён только в проектном `.cargo/config.toml`, используйте переменную окружения `CARGO_REGISTRIES_NORA_TOKEN`.
 
 Создайте `Cargo.toml` с описанием пакета:
 
