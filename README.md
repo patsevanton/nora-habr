@@ -91,10 +91,6 @@ terraform {
       source  = "hashicorp/time"
       version = ">= 0.9.0"
     }
-    local = {
-      source  = "hashicorp/local"
-      version = ">= 2.0.0"
-    }
     null = {
       source  = "hashicorp/null"
       version = ">= 3.0.0"
@@ -104,7 +100,7 @@ terraform {
 }
 ```
 
-Используем провайдеры: `yandex-cloud/yandex` для управления ресурсами облака, `hashicorp/helm` для деплоя Helm-чартов, `hashicorp/time` для задержек при создании сервисных аккаунтов, `hashicorp/local` для генерации файлов из шаблонов, `hashicorp/null` дл�� вызова DuckDNS API.
+Используем провайдеры: `yandex-cloud/yandex` для управления ресурсами облака, `hashicorp/helm` для деплоя Helm-чартов, `hashicorp/time` для задержек при создании сервисных аккаунтов, `hashicorp/null` для вызова DuckDNS API.
 
 ### net.tf — сеть
 
@@ -236,6 +232,12 @@ resource "helm_release" "ingress_nginx" {
 # Авторизация в Yandex Cloud
 yc init
 
+# Создаём terraform.tfvars на основе примера
+cp terraform.tfvars.example terraform.tfvars
+# Редактируем: вставляем свой поддомен и токен с duckdns.org
+# duckdns_domain = "nora-apatsev"
+# duckdns_token  = "ваш-токен-с-duckdns"
+
 # Инициализация Terraform
 terraform init
 
@@ -250,6 +252,8 @@ yc managed-kubernetes cluster get-credentials \
   --id $(terraform output -raw k8s_cluster_id) \
   --external --force
 ```
+
+Переменные `duckdns_domain` и `duckdns_token` задаются в файле `terraform.tfvars` (добавлен в `.gitignore`, не попадёт в репозиторий). Токен можно получить в личном кабинете на [duckdns.org](https://duckdns.org) после регистрации.
 
 ## cert-manager: автоматические TLS-сертификаты
 

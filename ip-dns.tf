@@ -17,10 +17,3 @@ resource "null_resource" "duckdns_update" {
     command = "curl -s 'https://www.duckdns.org/update?domains=${var.duckdns_domain}&token=${var.duckdns_token}&ip=${local.ingress_ip}'"
   }
 }
-
-resource "local_file" "helm_values" {
-  filename = "${path.module}/helm-values.yaml"
-  content = templatefile("${path.module}/helm-values.yaml.tftpl", {
-    duckdns_fqdn = local.duckdns_fqdn
-  })
-}
