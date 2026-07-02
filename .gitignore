@@ -47,3 +47,4 @@ terraform.rc
 node_modules/
 package-lock.json
 users.htpasswd
+package.json

@@ -480,7 +480,8 @@ npm config set registry https://nora-apatsev.duckdns.org/npm/
 # Установка пакета (NORA проксирует запрос в npmjs.org и кэширует)
 npm install lodash
 
-# Публикация своего пакета
+# Публикация своего пакета (нужно быть в директории с package.json)
+cd my-package
 npm publish --registry https://nora-apatsev.duckdns.org/npm/
 ```
 
@@ -494,21 +495,21 @@ cd test-npm-pkg
 # Логин (токен в качестве пароля)
 npm set //nora-apatsev.duckdns.org/npm/:_authToken nra_cc40a977a2b147cfa4bde58c2b193b3a
 
-# Публикуем
+# Публикуем (запускается из директории test-npm-pkg)
 npm publish --registry https://nora-apatsev.duckdns.org/npm/
 
 # Проверяем установку
 cd .. && mkdir test-install && cd test-install
 npm init -y
-npm install hello-world-test --registry https://nora-apatsev.duckdns.org/npm/
-node -e "const hello = require('hello-world-test'); console.log(hello());"
+npm install @test/hello-world --registry https://nora-apatsev.duckdns.org/npm/
+node -e "const hello = require('@test/hello-world'); console.log(hello());"
 ```
 
 Содержимое тестового пакета:
 
 ```
 test-npm-pkg/
-├── package.json   # имя: hello-world-test, версия: 1.0.0
+├── package.json   # имя: @test/hello-world, версия: 1.0.0
 └── index.js       # module.exports = function hello() { return "Hello from Nora registry!"; }
 ```
 
