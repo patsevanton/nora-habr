@@ -53,3 +53,4 @@ python-pkg-example/dist/*
 test-maven-pkg/target/
 test-helm-pkg/*
 test-cargo-pkg/*
+helm-values.yaml
