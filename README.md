@@ -622,19 +622,35 @@ dart pub get
 
 ## Аутентификация
 
-По умолчанию NORA работает без аутентификации (анонимный доступ на чтение). Для включения авторизации:
+По умолчанию NORA работает без аутентификации (анонимный доступ на чтение). Для включения авторизации выполните следующие шаги:
 
-### Создаём htpasswd
+### Шаг 1. Создаём htpasswd-файл
 
 ```bash
 htpasswd -c users.htpasswd admin
-# Вводим пароль
+# Введите пароль дважды
 ```
 
-### Применяем через values
+Формат `htpasswd` совместим с Apache HTTPD. Для добавления дополнительных пользователей (без флага `-c`, который перезаписывает файл):
+
+```bash
+htpasswd users.htpasswd developer
+```
+
+### Шаг 2. Создаём Kubernetes Secret
+
+```bash
+kubectl create secret generic nora-htpasswd \
+  --from-file=users.htpasswd=./users.htpasswd
+```
+
+### Шаг 3. Настраиваем helm-values.yaml
+
+В файле `helm-values.yaml` уже включена авторизация. Убедитесь, что секции `env`, `extraVolumeMounts` и `extraVolumes` выглядят так:
 
 ```yaml
 env:
+  NORA_PUBLIC_URL: "https://nora-apatsev.duckdns.org"
   NORA_AUTH_ENABLED: "true"
 
 extraVolumeMounts:
@@ -648,11 +664,16 @@ extraVolumes:
       secretName: nora-htpasswd
 ```
 
-Или через Secret:
+### Шаг 4. Применяем конфигурацию
 
 ```bash
-kubectl create secret generic nora-htpasswd \
-  --from-file=users.htpasswd=./users.htpasswd
+helm upgrade nora oci://ghcr.io/getnora-io/helm/nora -f helm-values.yaml
+```
+
+Если NORA устанавливается впервые:
+
+```bash
+helm install nora oci://ghcr.io/getnora-io/helm/nora -f helm-values.yaml
 ```
 
 ### Использование токенов
