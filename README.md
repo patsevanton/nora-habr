@@ -2,26 +2,26 @@
 
 ## Введение
 
-Каждый разработчик сталкивался с проблемой хранения артефактов: Docker-образы, npm-пакеты, Maven-артефакты, Python-колёсики. Вариантов обычно два — использовать публичные реестры (Docker Hub, npmjs.org, PyPI) или поднимать Nexus / Artifactory. Публичные реестры ненадёжны из-за rate limit и даунтаймов, Nexus и Artifactory тяжёлые: Java, PostgreSQL, гигабайты RAM, десятки минут на старт.
+Каждый разработчик сталкивался с проблемой хранения артефактов: Docker-образы, npm-пакеты, Maven-артефакты, Python-колёсики. Вариантов обычно два — использовать публичные реестры (Docker Hub, npmjs.org, PyPI) или поднимать Nexus / Artifactory / Harbor. Публичные реестры ненадёжны из-за rate limit и даунтаймов, Nexus и Artifactory тяжёлые: Java, PostgreSQL, гигабайты RAM, десятки минут на старт.
 
 [NORA](https://github.com/getnora-io/nora) — open-source реестр артефактов на Rust. Один бинарник < 27 МБ, < 50 МБ RAM в простое, старт за 3 секунды. Поддерживает 13 форматов: Docker, Maven, npm, PyPI, Cargo, Go, Raw, RubyGems, Terraform, Ansible Galaxy, NuGet, Pub (Dart/Flutter), Conan (C/C++). Плюс Helm-чарты через OCI.
 
 В этой статье мы развернём NORA в Kubernetes на Yandex Managed Kubernetes с помощью Terraform и Helm, настроим ingress-nginx, выпустим TLS-сертификат через cert-manager, а затем попробуем все основные сценарии использования.
 
-## NORA vs Nexus vs Artifactory
+## NORA vs Nexus vs Artifactory vs Harbor
 
-| Метрика | NORA | Nexus | JFrog Artifactory |
-|---------|------|-------|-------------------|
-| Размер бинарника | < 27 МБ | 600+ МБ | 1+ ГБ |
-| RAM (простой) | < 50 МБ | 2–4 ГБ | 2–4 ГБ |
-| Время старта | < 3 сек | 30–60 сек | 30–60 сек |
-| Зависимости | Нет | Java 11+ | Java 11+ |
-| База данных | Файловая система | OrientDB/PostgreSQL | OrientDB/PostgreSQL |
-| Количество форматов | 13 | 30+ | 30+ |
-| S3-хранилище | Да | Платная версия | Платная версия |
-| Цена | MIT, бесплатно | Community бесплатно | Community бесплатно |
+| Метрика | NORA | Nexus | JFrog Artifactory | Harbor |
+|---------|------|-------|-------------------|--------|
+| Размер бинарника | < 27 МБ | 600+ МБ | 1+ ГБ | 1+ ГБ (все компоненты) |
+| RAM (простой) | < 50 МБ | 2–4 ГБ | 2–4 ГБ | 2–4 ГБ |
+| Время старта | < 3 сек | 30–60 сек | 30–60 сек | 30–60 сек |
+| Зависимости | Нет | Java 11+ | Java 11+ | Go, PostgreSQL, Redis |
+| База данных | Файловая система | OrientDB/PostgreSQL | OrientDB/PostgreSQL | PostgreSQL |
+| Количество форматов | 13 | 30+ | 30+ | Docker, OCI, Helm, CNAB |
+| S3-хранилище | Да | Платная версия | Платная версия | Да |
+| Цена | MIT, бесплатно | Community бесплатно | Community бесплатно | Apache 2.0, бесплатно |
 
-NORA уступает Nexus/Artifactory по количеству поддерживаемых форматов и enterprise-фичам (LDAP, репликация, встроенное сканирование CVE). Но для команд, которым нужен быстрый, лёгкий и бесплатный registry с основными форматами — это отличный выбор.
+NORA уступает Nexus/Artifactory/Harbor по количеству поддерживаемых форматов и enterprise-фичам (LDAP, репликация, встроенное сканирование CVE). Но для команд, которым нужен быстрый, лёгкий и бесплатный registry с основными форматами — это отличный выбор.
 
 ## Архитектура решения
 
@@ -816,7 +816,7 @@ kubectl exec deploy/nora -- tar czf - /data | \
 
 ## Заключение
 
-NORA — это современная альтернатива Nexus и Artifactory для команд, которым не нужен enterprise-overhead. Ключевые преимущества:
+NORA — это современная альтернатива Nexus, Artifactory и Harbor для команд, которым не нужен enterprise-overhead. Ключевые преимущества:
 
 - **Простота** — один бинарник, один конфиг, одна PVC. `cp -r /data/ backup/` — полный бэкап.
 - **Производительность** — < 3 секунды на старт, < 50 МБ RAM. Rust, Tokio, Axum.
