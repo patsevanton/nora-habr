@@ -28,7 +28,10 @@ config:
   curation:
     mode: "enforce"
     min_release_age: "7d"
-    blocklist_path: "/etc/nora/blocklist.json"
+    blocklist:
+      existingConfigMap: nora-blocklist
+    allowlist:
+      existingConfigMap: nora-allowlist
     npm:
       min_release_age: "3d"
     pypi:
