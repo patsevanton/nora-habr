@@ -421,6 +421,170 @@ kubectl describe certificate nora-tls
 openssl s_client -connect nora.apatsev.org.ru:443 -servername nora.apatsev.org.ru < /dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
 ```
 
+## Отладка: браузер ругается на /health
+
+Если при открытии `https://nora.apatsev.org.ru/health` в браузере возникают ошибки — вот чеклист для диагностики.
+
+### 1. Проверяем, что отвечает сервер
+
+```bash
+# Смотрим HTTP-код и заголовки
+curl -v https://nora.apatsev.org.ru/health
+
+# Ожидаемый ответ: HTTP/2 200 + JSON {"status":"ok"} или {"status":"healthy"}
+```
+
+Если `curl` тоже падает — проблема не в браузере, а в инфраструктуре. Переходим к шагам ниже.
+
+### 2. TLS-сертификат ещё не выпущен (NET::ERR_CERT_AUTHORITY_INVALID)
+
+**Симптом:** браузер показывает «Ваше подключение не защищено» / `NET::ERR_CERT_AUTHORITY_INVALID`.
+
+**Причина:** cert-manager ещё не выпустил сертификат или Challenge не прошёл.
+
+```bash
+# Проверяем статус сертификата
+kubectl get certificates
+kubectl describe certificate nora-tls
+
+# Проверяем Challenge (должен быть valid)
+kubectl get challenges
+kubectl describe challenge
+
+# Проверяем Order
+kubectl get orders
+kubectl describe order
+```
+
+**Решения:**
+- Подождать 1–5 минут — Let's Encrypt ACME HTTP-01 challenge требует времени
+- Проверить, что ClusterIssuer в статусе Ready: `kubectl get clusterissuer letsencrypt-prod`
+- Проверить логи cert-manager: `kubectl logs -n cert-manager deploy/cert-manager`
+- Убедиться, что DNS-запись `nora.apatsev.org.ru` резолвится на правильный IP ingress-контроллера:
+  ```bash
+  dig nora.apatsev.org.ru +short
+  kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  ```
+- Если cert-manager не может достучаться до `/.well-known/acme-challenge/` — проверить, что ingress-nginx работает и нет конфликтов Ingress-правил
+
+### 3. 502 Bad Gateway / 503 Service Temporarily Unavailable
+
+**Симптом:** браузер показывает страницу ошибки ingress-nginx «502 Bad Gateway» или «503».
+
+**Причина:** под NORA не готов или не отвечает.
+
+```bash
+# Проверяем, что под Running
+kubectl get pods -l app.kubernetes.io/name=nora
+
+# Проверяем логи NORA
+kubectl logs -l app.kubernetes.io/name=nora --tail=50
+
+# Проверяем readiness probe
+kubectl describe pod -l app.kubernetes.io/name=nora | grep -A5 "Readiness"
+
+# Проверяем, что сервис существует и endpoints не пустые
+kubectl get svc nora
+kubectl get endpoints nora
+```
+
+**Решения:**
+- Если под в `CrashLoopBackOff` — смотрим логи, обычно не хватает PVC или неправильные env-переменные
+- Если endpoints пустые — selector в Service не совпадает с labels пода
+- Проверить health изнутри кластера:
+  ```bash
+  kubectl run curl --rm -it --image=curlimages/curl -- curl -v http://nora.default.svc:8080/health
+  ```
+
+### 4. Mixed Content (смешанный контент)
+
+**Симптом:** в консоли браузера (F12 → Console) ошибки вида:
+```
+Mixed Content: The page at 'https://nora.apatsev.org.ru/ui/' was loaded over HTTPS,
+but requested an insecure resource 'http://...'
+```
+
+**Причина:** NORA отдаёт ссылки на ресурсы по HTTP вместо HTTPS.
+
+**Проверка:**
+```bash
+# Смотрим, какие URL отдаёт NORA в ответах
+curl -s https://nora.apatsev.org.ru/health | python3 -m json.tool
+curl -s https://nora.apatsev.org.ru/ui/ | grep -i 'http://'
+```
+
+**Решения:**
+- Убедиться, что `NORA_PUBLIC_URL` задан как `https://nora.apatsev.org.ru` (с HTTPS) в helm-values.yaml
+- Проверить, что ingress-nginx корректно проксирует заголовки:
+  ```yaml
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-set-headers: "default/custom-headers"
+  ```
+- Проверить, что `X-Forwarded-Proto: https` доходит до NORA:
+  ```bash
+  kubectl logs -l app.kubernetes.io/name=nora | grep -i "proto\|scheme\|http://"
+  ```
+
+### 5. CORS-ошибки
+
+**Симптом:** в консоли браузера:
+```
+Access to XMLHttpRequest at 'https://nora.apatsev.org.ru/...' from origin '...'
+has been blocked by CORS policy
+```
+
+**Причина:** Web UI NORA обращается к API с другого origin (например, если открываете по IP или с другого домена).
+
+**Решения:**
+- Открывать NORA только по домену `nora.apatsev.org.ru`, а не по IP
+- Если нужен кастомный origin — добавить env-перемену:
+  ```yaml
+  env:
+    NORA_CORS_ORIGINS: "https://nora.apatsev.org.ru,https://your-other-domain.com"
+  ```
+
+### 6. HSTS / Too Many Redirects
+
+**Симптом:** `ERR_TOO_MANY_REDIRECTS` или браузер принудительно редиректит HTTP→HTTPS в бесконечный цикл.
+
+**Причина:** ingress-nginx делает redirect на HTTPS, но за ним стоит ещё один прокси (балансировщик, CDN), который тоже перенаправляет.
+
+```bash
+# Проверяем цепочку редиректов
+curl -v -L --max-redirs 5 http://nora.apatsev.org.ru/health
+
+# Проверяем аннотации Ingress
+kubectl get ingress nora -o yaml | grep -i redirect
+```
+
+**Решения:**
+- Если перед ingress-nginx есть внешний балансировщик — отключить forced-ssl-redirect в ingress-nginx:
+  ```yaml
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  ```
+- Или наоборот, включить, если redirect нужен:
+  ```yaml
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  ```
+
+### 7. Общая диагностика
+
+```bash
+# Всё одним скриптом
+echo "=== Pods ===" && kubectl get pods -l app.kubernetes.io/name=nora
+echo "=== Service ===" && kubectl get svc nora
+echo "=== Endpoints ===" && kubectl get endpoints nora
+echo "=== Ingress ===" && kubectl get ingress nora
+echo "=== Certificate ===" && kubectl get certificates
+echo "=== Certificate details ===" && kubectl describe certificate nora-tls
+echo "=== ClusterIssuer ===" && kubectl get clusterissuer letsencrypt-prod
+echo "=== DNS ===" && dig +short nora.apatsev.org.ru
+echo "=== curl health ===" && curl -sS -o /dev/null -w "HTTP %{http_code}, time: %{time_total}s\n" https://nora.apatsev.org.ru/health
+```
+
 ## Использование: примеры для каждого формата
 
 ### Docker
