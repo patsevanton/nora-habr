@@ -59,7 +59,7 @@ resource "yandex_kubernetes_node_group" "k8s_node_group_a" {
     platform_id = "standard-v2"
 
     network_interface {
-      nat = true
+      nat        = true
       subnet_ids = [local.subnet_a_id]
     }
 
