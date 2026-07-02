@@ -467,9 +467,6 @@ docker push nora-apatsev.duckdns.org/myapp:1.0
 
 # Пуллим образ из NORA
 docker pull nora-apatsev.duckdns.org/myapp:1.0
-
-# Список всех репозиториев
-curl https://nora-apatsev.duckdns.org/v2/_catalog
 ```
 
 NORA полностью совместима с Docker Registry v2 API, поэтому все стандартные команды `docker` работают без изменений.
