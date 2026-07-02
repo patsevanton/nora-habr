@@ -6,7 +6,7 @@
 
 [NORA](https://github.com/getnora-io/nora) — open-source реестр артефактов на Rust. Один бинарник < 27 МБ, < 50 МБ RAM в простое, старт за 3 секунды. Поддерживает 13 форматов: Docker, Maven, npm, PyPI, Cargo, Go, Raw, RubyGems, Terraform, Ansible Galaxy, NuGet, Pub (Dart/Flutter), Conan (C/C++). Плюс Helm-чарты через OCI.
 
-В этой статье мы развернём NORA в Kubernetes на Yandex Managed Kubernetes с помощью Terraform и Helm, настроим ingress-nginx, а затем попробуем все основные сценарии использования.
+В этой статье мы развернём NORA в Kubernetes на Yandex Managed Kubernetes с помощью Terraform и Helm, настроим ingress-nginx, выпустим TLS-сертификат через cert-manager, а затем попробуем все основные сценарии использования.
 
 ## NORA vs Nexus vs Artifactory
 
@@ -41,6 +41,12 @@ NORA уступает Nexus/Artifactory по количеству поддерж
 │  │          │              │  PVC 10Gi  │     │  │
 │  │          │              │  (/data)   │     │  │
 │  │          │              └────────────┘     │  │
+│  │          │                                │  │
+│  │   ┌──────┴───────┐                        │  │
+│  │   │ cert-manager │                        │  │
+│  │   │ (Let's       │                        │  │
+│  │   │  Encrypt)    │                        │  │
+│  │   └──────────────┘                        │  │
 │  └──────────┼─────────────────────────────────┘  │
 │             │                                    │
 │    ┌────────▼────────┐                           │
@@ -59,6 +65,7 @@ NORA уступает Nexus/Artifactory по количеству поддерж
 - **VPC + Subnet** — сетевая изоляция в зоне `ru-central1-a`
 - **Managed Kubernetes** — кластер K8s v1.33 с auto-scaling нод (1–3)
 - **ingress-nginx** — Ingress-контроллер с LoadBalancer и публичным IP
+- **cert-manager** — автоматический выпуск и обновление TLS-сертификатов Let's Encrypt
 - **NORA** — artifact registry, деплоится через Helm, хранит данные на PVC
 - **DNS** — A-запись `nora.apatsev.org.ru`, указывающая на публичный IP
 
@@ -239,9 +246,128 @@ yc managed-kubernetes cluster get-credentials \
   --external --force
 ```
 
+## cert-manager: автоматические TLS-сертификаты
+
+Для работы HTTPS с валидным TLS-сертификатом от Let's Encrypt нужен [cert-manager](https://cert-manager.io/). Он автоматически выпускает и обновляет сертификаты для Ingress-ресурсов.
+
+### Установка cert-manager
+
+```bash
+# Добавляем Helm-репозиторий
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+# Устанавливаем cert-manager с CRDs
+helm install cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --set crds.enabled=true
+```
+
+Проверяем, что поды cert-manager запустились:
+
+```bash
+kubectl get pods -n cert-manager
+# cert-manager-xxx            1/1     Running
+# cert-manager-cainjector-xxx 1/1     Running
+# cert-manager-webhook-xxx    1/1     Running
+```
+
+### Создаём ClusterIssuer
+
+Файл `cluster-issuer.yaml` уже лежит в репозитории:
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@apatsev.org.ru
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+```
+
+Применяем:
+
+```bash
+kubectl apply -f cluster-issuer.yaml
+```
+
+Проверяем:
+
+```bash
+kubectl get clusterissuer letsencrypt-prod
+# NAME               READY   AGE
+# letsencrypt-prod   True    10s
+```
+
+### Настройка в Helm values NORA
+
+Ingress в `helm-values.yaml` уже настроен на использование cert-manager:
+
+```yaml
+ingress:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: nora-tls
+      hosts:
+        - nora.apatsev.org.ru
+```
+
+Аннотация `cert-manager.io/cluster-issuer: letsencrypt-prod` указывает cert-manager автоматически создать Certificate-ресурс и получить сертификат через ACME HTTP-01 challenge. Сертификат сохраняется в Secret `nora-tls`.
+
+### Как это работает
+
+1. Ingress-nginx создаётся с аннотацией `cert-manager.io/cluster-issuer`
+2. cert-manager видит аннотацию и создаёт Certificate-ресурс
+3. Certificate → CertificateRequest → Order → Challenge
+4. Let's Encrypt проверяет доступ к `/.well-known/acme-challenge/` через ingress-nginx
+5. cert-manager получает сертификат и сохраняет его в Secret `nora-tls`
+6. ingress-nginx использует этот Secret для TLS-терминации
+
+### Проверка сертификата
+
+```bash
+# Статус заказа сертификата
+kubectl get certificates
+kubectl describe certificate nora-tls
+
+# Проверка цепочки
+openssl s_client -connect nora.apatsev.org.ru:443 -servername nora.apatsev.org.ru < /dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+```
+
+### Staging-сертификат (для тестирования)
+
+Для тестирования можно использовать staging Let's Encrypt, чтобы не попасть в rate limit:
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@apatsev.org.ru
+    privateKeySecretRef:
+      name: letsencrypt-staging-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+```
+
 ## Деплой NORA через Helm
 
-Инфраструктура готова — кластер работает, ingress-nginx слушает на публичном IP. Теперь ставим NORA.
+Инфраструктура готова — кластер работает, ingress-nginx слушает на публичном IP, cert-manager выпустит TLS-сертификат автоматически. Теперь ставим NORA.
 
 ### Добавляем Helm-репозиторий
 
@@ -252,8 +378,7 @@ helm repo update
 
 ### Создаём values-файл
 
-```bash
-cat <<EOF > helm-values.yaml
+```yaml
 ingress:
   enabled: true
   className: nginx
@@ -266,6 +391,11 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    - secretName: nora-tls
+      hosts:
+        - nora.apatsev.org.ru
 
 persistence:
   enabled: true
@@ -281,13 +411,14 @@ resources:
   requests:
     memory: 128Mi
     cpu: "0.25"
-EOF
 ```
 
 Указываем только то, что отличается от дефолтов Nora:
 - `NORA_PUBLIC_URL` — внешний URL, который NORA будет вставлять в download-ссылки (обязательно за reverse proxy)
 - `proxy-body-size: "0"` — снимает ограничение на размер тела запроса (нужно для больших Docker-образов)
 - `proxy-read-timeout: "600"` — увеличенный таймаут для больших загрузок
+- `cert-manager.io/cluster-issuer` — аннотация для автоматического выпуска TLS-сертификата через cert-manager
+- `tls` — конфигурация TLS с указанием Secret для сертификата
 - `image`, `NORA_HOST`, `NORA_PORT`, `NORA_AUTH_ENABLED`, `RUST_LOG`, `service`, `healthcheck` — всё это уже имеет нужные значения по умолчанию в контейнере Nora
 
 ### Устанавливаем
