@@ -2,7 +2,7 @@ ingress:
   enabled: true
   className: nginx
   hosts:
-    - host: nora-apatsev.duckdns.org
+    - host: ${duckdns_fqdn}
       paths:
         - path: /
           pathType: Prefix
@@ -14,14 +14,14 @@ ingress:
   tls:
     - secretName: nora-tls
       hosts:
-        - nora-apatsev.duckdns.org
+        - ${duckdns_fqdn}
 
 persistence:
   enabled: true
   size: 10Gi
 
 env:
-  NORA_PUBLIC_URL: "https://nora-apatsev.duckdns.org"
+  NORA_PUBLIC_URL: "https://${duckdns_fqdn}"
 
 resources:
   limits:
