@@ -329,17 +329,6 @@ ingress:
 5. cert-manager получает сертификат и сохраняет его в Secret `nora-tls`
 6. ingress-nginx использует этот Secret для TLS-терминации
 
-### Проверка сертификата
-
-```bash
-# Статус заказа сертификата
-kubectl get certificates
-kubectl describe certificate nora-tls
-
-# Проверка цепочки
-openssl s_client -connect nora.apatsev.org.ru:443 -servername nora.apatsev.org.ru < /dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
-```
-
 ## Деплой NORA через Helm
 
 Инфраструктура готова — кластер работает, ingress-nginx слушает на публичном IP, cert-manager выпустит TLS-сертификат автоматически. Теперь ставим NORA.
@@ -416,6 +405,19 @@ open https://nora.apatsev.org.ru/ui/
 ```
 
 После этого NORA доступна по адресу `https://nora.apatsev.org.ru`. Web UI покажет dashboard с 13 реестрами.
+
+### Проверка сертификата
+
+После деплоя NORA cert-manager увидит Ingress с аннотацией `cert-manager.io/cluster-issuer` и автоматически начнёт выпуск сертификата. Проверяем:
+
+```bash
+# Статус заказа сертификата
+kubectl get certificates
+kubectl describe certificate nora-tls
+
+# Проверка цепочки
+openssl s_client -connect nora.apatsev.org.ru:443 -servername nora.apatsev.org.ru < /dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+```
 
 ## Использование: примеры для каждого формата
 
