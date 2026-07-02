@@ -681,15 +681,22 @@ helm install myrelease oci://nora-apatsev.duckdns.org/helm/mychart --version 0.1
 Настройте Go proxy:
 
 ```bash
-export GOPROXY=https://nora-apatsev.duckdns.org/go,direct
+# Глобально через go env (рекомендуется)
+go env -w GOPROXY=https://nora-apatsev.duckdns.org/go,direct
 
-go get golang.org/x/text@latest
+# Или через переменную окружения
+export GOPROXY=https://nora-apatsev.duckdns.org/go,direct
 ```
 
-Или в `go env`:
+Для использования `go get` необходимо находиться внутри Go-модуля (директории с `go.mod`):
 
 ```bash
-go env -w GOPROXY=https://nora-apatsev.duckdns.org/go,direct
+# Если модуль ещё не создан — инициализируем
+mkdir myproject && cd myproject
+go mod init myproject
+
+# Теперь go get работает через NORA
+go get golang.org/x/text@latest
 ```
 
 Go-модули иммутабельны после первой загрузки — NORA кэширует `.info`, `.mod`, `.zip` навсегда.
