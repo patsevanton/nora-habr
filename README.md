@@ -435,7 +435,7 @@ curl -X POST https://nora-apatsev.duckdns.org/api/tokens \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
-    "password": "your-password",
+    "password": "admin",
     "role": "write",
     "ttl_days": 90,
     "description": "CI/CD pipeline token"
