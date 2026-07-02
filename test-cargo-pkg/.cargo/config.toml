@@ -1,0 +1,5 @@
+[registries.nora]
+index = "sparse+https://nora-apatsev.duckdns.org/cargo/"
+
+[source.crates-io]
+replace-with = "nora"
