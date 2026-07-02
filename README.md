@@ -254,10 +254,6 @@ helm repo update
 
 ```bash
 cat <<EOF > helm-values.yaml
-image:
-  repository: ghcr.io/getnora-io/nora
-  tag: latest
-
 ingress:
   enabled: true
   className: nginx
@@ -274,14 +270,9 @@ ingress:
 persistence:
   enabled: true
   size: 10Gi
-  accessMode: ReadWriteOnce
 
 env:
-  NORA_HOST: "0.0.0.0"
-  NORA_PORT: "4000"
   NORA_PUBLIC_URL: "https://nora.apatsev.org.ru"
-  NORA_AUTH_ENABLED: "false"
-  RUST_LOG: "info"
 
 resources:
   limits:
@@ -290,17 +281,14 @@ resources:
   requests:
     memory: 128Mi
     cpu: "0.25"
-
-service:
-  type: ClusterIP
-  port: 4000
 EOF
 ```
 
-Ключевые моменты:
-- `NORA_PUBLIC_URL` — внешний URL, который NORA будет вставлять в download-ссылки
+Указываем только то, что отличается от дефолтов Nora:
+- `NORA_PUBLIC_URL` — внешний URL, который NORA будет вставлять в download-ссылки (обязательно за reverse proxy)
 - `proxy-body-size: "0"` — снимает ограничение на размер тела запроса (нужно для больших Docker-образов)
 - `proxy-read-timeout: "600"` — увеличенный таймаут для больших загрузок
+- `image`, `NORA_HOST`, `NORA_PORT`, `NORA_AUTH_ENABLED`, `RUST_LOG`, `service`, `healthcheck` — всё это уже имеет нужные значения по умолчанию в контейнере Nora
 
 ### Устанавливаем
 

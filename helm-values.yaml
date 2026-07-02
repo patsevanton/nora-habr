@@ -1,7 +1,3 @@
-image:
-  repository: ghcr.io/getnora-io/nora
-  tag: latest
-
 ingress:
   enabled: true
   className: nginx
@@ -18,15 +14,9 @@ ingress:
 persistence:
   enabled: true
   size: 10Gi
-  storageClass: ""
-  accessMode: ReadWriteOnce
 
 env:
-  NORA_HOST: "0.0.0.0"
-  NORA_PORT: "4000"
   NORA_PUBLIC_URL: "https://nora.apatsev.org.ru"
-  NORA_AUTH_ENABLED: "false"
-  RUST_LOG: "info"
 
 resources:
   limits:
@@ -35,15 +25,3 @@ resources:
   requests:
     memory: 128Mi
     cpu: "0.25"
-
-service:
-  type: ClusterIP
-  port: 4000
-
-healthcheck:
-  enabled: true
-  path: /health
-  initialDelaySeconds: 10
-  periodSeconds: 15
-  timeoutSeconds: 5
-  retries: 3
