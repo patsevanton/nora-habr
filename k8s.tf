@@ -91,12 +91,11 @@ provider "helm" {
   }
 }
 
-resource "helm_release" "traefik" {
-  name             = "traefik"
-  chart            = "traefik"
-  repository       = "https://traefik.github.io/charts"
-  version          = "34.2.0"
-  namespace        = "traefik"
+resource "helm_release" "ingress_nginx" {
+  name             = "ingress-nginx"
+  chart            = "ingress-nginx"
+  repository       = "https://kubernetes.github.io/ingress-nginx"
+  namespace        = "ingress-nginx"
   create_namespace = true
 
   depends_on = [
@@ -106,9 +105,9 @@ resource "helm_release" "traefik" {
 
   values = [
     yamlencode({
-      service = {
-        type = "LoadBalancer"
-        spec = {
+      controller = {
+        service = {
+          type           = "LoadBalancer"
           loadBalancerIP = local.ingress_ip
         }
       }
