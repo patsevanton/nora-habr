@@ -338,6 +338,26 @@ ingress:
 5. cert-manager получает сертификат и сохраняет его в Secret `nora-tls`
 6. ingress-nginx использует этот Secret для TLS-терминации
 
+## Аутентификация
+
+По умолчанию NORA работает без аутентификации (анонимный доступ на чтение). Для включения авторизации выполните следующие шаги:
+
+### Шаг 1. Создаём htpasswd-файл
+
+```bash
+htpasswd -c users.htpasswd admin
+# Введите пароль дважды
+```
+
+### Шаг 2. Создаём Kubernetes Secret
+
+```bash
+kubectl create secret generic nora-htpasswd \
+  --from-file=users.htpasswd=./users.htpasswd
+```
+
+NORA поддерживает три роли: `read` (чтение), `write` (чтение + запись), `admin` (всё + управление токенами). Роли назначаются через токены (см. ниже).
+
 ## Деплой NORA через Helm
 
 Инфраструктура готова — кластер работает, ingress-nginx слушает на публичном IP, cert-manager выпустит TLS-сертификат автоматически. Теперь ставим NORA.
@@ -377,6 +397,17 @@ persistence:
 
 env:
   NORA_PUBLIC_URL: "https://nora-apatsev.duckdns.org"
+  NORA_AUTH_ENABLED: "true"
+
+extraVolumeMounts:
+  - name: htpasswd
+    mountPath: /data/users.htpasswd
+    subPath: users.htpasswd
+
+extraVolumes:
+  - name: htpasswd
+    secret:
+      secretName: nora-htpasswd
 
 resources:
   limits:
@@ -390,11 +421,13 @@ EOF
 
 Указываем только то, что отличается от дефолтов Nora:
 - `NORA_PUBLIC_URL` — внешний URL, который NORA будет вставлять в download-ссылки (обязательно за reverse proxy)
+- `NORA_AUTH_ENABLED` — включает аутентификацию по htpasswd
+- `extraVolumeMounts` / `extraVolumes` — монтируют htpasswd-файл из Kubernetes Secret
 - `proxy-body-size: "0"` — снимает ограничение на размер тела запроса (нужно для больших Docker-образов)
 - `proxy-read-timeout: "600"` — увеличенный таймаут для больших загрузок
 - `cert-manager.io/cluster-issuer` — аннотация для автоматического выпуска TLS-сертификата через cert-manager
 - `tls` — конфигурация TLS с указанием Secret для сертификата
-- `image`, `NORA_HOST`, `NORA_PORT`, `NORA_AUTH_ENABLED`, `RUST_LOG`, `service`, `healthcheck` — всё это уже имеет нужные значения по умолчанию в контейнере Nora
+- `image`, `NORA_HOST`, `NORA_PORT`, `RUST_LOG`, `service`, `healthcheck` — всё это уже имеет нужные значения по умолчанию в контейнере Nora
 
 ### Устанавливаем
 
@@ -416,56 +449,6 @@ open https://nora-apatsev.duckdns.org/ui/
 ```
 
 После этого NORA доступна по адресу `https://nora-apatsev.duckdns.org`. Web UI покажет dashboard с 13 реестрами.
-
-## Аутентификация
-
-По умолчанию NORA работает без аутентификации (анонимный доступ на чтение). Для включения авторизации выполните следующие шаги:
-
-### Шаг 1. Создаём htpasswd-файл
-
-```bash
-htpasswd -c users.htpasswd admin
-# Введите пароль дважды
-```
-
-### Шаг 2. Создаём Kubernetes Secret
-
-```bash
-kubectl create secret generic nora-htpasswd \
-  --from-file=users.htpasswd=./users.htpasswd
-```
-
-### Шаг 3. Настраиваем helm-values.yaml
-
-В файле `helm-values.yaml` уже включена авторизация. Убедитесь, что секции `env`, `extraVolumeMounts` и `extraVolumes` выглядят так:
-
-```yaml
-env:
-  NORA_PUBLIC_URL: "https://nora-apatsev.duckdns.org"
-  NORA_AUTH_ENABLED: "true"
-
-extraVolumeMounts:
-  - name: htpasswd
-    mountPath: /data/users.htpasswd
-    subPath: users.htpasswd
-
-extraVolumes:
-  - name: htpasswd
-    secret:
-      secretName: nora-htpasswd
-```
-
-### Шаг 4. Применяем конфигурацию
-
-```bash
-helm upgrade nora oci://ghcr.io/getnora-io/helm/nora -f helm-values.yaml
-```
-
-Если NORA устанавливается впервые:
-
-```bash
-helm install nora oci://ghcr.io/getnora-io/helm/nora -f helm-values.yaml
-```
 
 ### Использование токенов
 
