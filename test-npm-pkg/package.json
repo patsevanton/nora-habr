@@ -1,0 +1,6 @@
+{
+  "name": "@test/hello-world",
+  "version": "1.0.0",
+  "description": "Test package for nora registry",
+  "main": "index.js"
+}

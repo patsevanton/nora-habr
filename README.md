@@ -454,6 +454,34 @@ npm install lodash
 npm publish --registry https://nora-apatsev.duckdns.org/npm/
 ```
 
+#### Тестирование npm publish
+
+Чтобы проверить публикацию, можно создать минимальный тестовый пакет (директория `test-npm-pkg` уже есть в репозитории):
+
+```bash
+cd test-npm-pkg
+
+# Логин (если ещё не залогинен)
+npm login --registry https://nora-apatsev.duckdns.org/npm/
+
+# Публикуем
+npm publish --registry https://nora-apatsev.duckdns.org/npm/
+
+# Проверяем установку
+cd .. && mkdir test-install && cd test-install
+npm init -y
+npm install hello-world-test --registry https://nora-apatsev.duckdns.org/npm/
+node -e "const hello = require('hello-world-test'); console.log(hello());"
+```
+
+Содержимое тестового пакета:
+
+```
+test-npm-pkg/
+├── package.json   # имя: hello-world-test, версия: 1.0.0
+└── index.js       # module.exports = function hello() { return "Hello from Nora registry!"; }
+```
+
 Или через `.npmrc` в проекте:
 
 ```
