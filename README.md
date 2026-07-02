@@ -428,12 +428,6 @@ htpasswd -c users.htpasswd admin
 # Введите пароль дважды
 ```
 
-Формат `htpasswd` совместим с Apache HTTPD. Для добавления дополнительных пользователей (без флага `-c`, который перезаписывает файл):
-
-```bash
-htpasswd users.htpasswd developer
-```
-
 ### Шаг 2. Создаём Kubernetes Secret
 
 ```bash
