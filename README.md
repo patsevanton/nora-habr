@@ -723,14 +723,44 @@ test-cargo-pkg/
 └── src/lib.rs           # исходный код
 ```
 
-В `.cargo/config.toml` (в проекте или `~/.cargo/config.toml` глобально):
+Создайте структуру проекта:
 
-```toml
+```bash
+mkdir -p test-cargo-pkg/.cargo test-cargo-pkg/src
+```
+
+Создайте `.cargo/config.toml` с настройками реестра:
+
+```bash
+cat <<'EOF' > test-cargo-pkg/.cargo/config.toml
 [registries.nora]
 index = "sparse+https://nora-apatsev.duckdns.org/cargo/"
 
 [source.crates-io]
 replace-with = "nora"
+EOF
+```
+
+Создайте `Cargo.toml` с описанием пакета:
+
+```bash
+cat <<'EOF' > test-cargo-pkg/Cargo.toml
+[package]
+name = "test-cargo-pkg"
+version = "0.1.0"
+edition = "2021"
+description = "Test Cargo package for Nora registry"
+EOF
+```
+
+Создайте исходный файл `src/lib.rs`:
+
+```bash
+cat <<'EOF' > test-cargo-pkg/src/lib.rs
+pub fn hello() -> &'static str {
+    "Hello from Nora!"
+}
+EOF
 ```
 
 Публикация:
