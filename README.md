@@ -530,11 +530,6 @@ source .venv/bin/activate
 
 # Установка пакета через NORA (с токеном)
 pip install --index-url https://token:nra_cc40a977a2b147cfa4bde58c2b193b3a@nora-apatsev.duckdns.org/simple/ flask
-
-# Публикация через twine (используем venv)
-pip install build twine
-python -m build
-twine upload --repository-url https://token:nra_cc40a977a2b147cfa4bde58c2b193b3a@nora-apatsev.duckdns.org/simple/ dist/*
 ```
 
 Пример минимального Python-пакета для публикации (директория `python-pkg-example` уже есть в репозитории):
