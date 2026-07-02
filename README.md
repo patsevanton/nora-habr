@@ -375,17 +375,6 @@ config:
     public_url: "https://nora-apatsev.duckdns.org"
   registries:
     enable: "all"
-  curation:
-    mode: "enforce"
-    min_release_age: "7d"
-    blocklist:
-      existingConfigMap: nora-blocklist
-    allowlist:
-      existingConfigMap: nora-allowlist
-    npm:
-      min_release_age: "3d"
-    pypi:
-      min_release_age: "5d"
   auth:
     enabled: true
     htpasswd:
@@ -406,8 +395,6 @@ EOF
 - `config.server.public_url` — внешний URL, который NORA будет вставлять в download-ссылки (обязательно за reverse proxy)
 - `config.auth.enabled` — включает аутентификацию по htpasswd
 - `config.auth.htpasswd.existingSecret` — ссылка на Kubernetes Secret с htpasswd-файлом (chart сам монтирует его в контейнер)
-- `config.curation.blocklist.existingConfigMap` — ConfigMap с blocklist.json; chart сам монтирует файл и выставляет `curation.blocklist_path`
-- `config.curation.allowlist.existingConfigMap` — ConfigMap с allowlist.json; аналогично монтирует и выставляет `curation.allowlist_path`
 - `proxy-body-size: "0"` — снимает ограничение на размер тела запроса (нужно для больших Docker-образов)
 - `proxy-read-timeout: "600"` — увеличенный таймаут для больших загрузок
 - `cert-manager.io/cluster-issuer` — аннотация для автоматического выпуска TLS-сертификата через cert-manager
