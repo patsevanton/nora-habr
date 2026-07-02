@@ -31,7 +31,7 @@ config:
     blocklist:
       existingConfigMap: nora-blocklist
     allowlist:
-      existingConfigMap: nora-allowlist
+      existingSecret: nora-allowlist
     npm:
       min_release_age: "3d"
     pypi:
