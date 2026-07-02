@@ -425,59 +425,7 @@ open https://nora-apatsev.duckdns.org/ui/
 
 NORA использует API-токены с префиксом `nra_` вместо эндпоинта `/auth/token` (который есть в Docker Hub / GHCR, но отсутствует в NORA).
 
-```bash
-# Создать токен
-curl -X POST https://nora-apatsev.duckdns.org/api/tokens \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "password": "your-password",
-    "role": "write",
-    "ttl_days": 90,
-    "description": "CI/CD pipeline token"
-  }'
-# {"token": "nra_cc40a977a2b147cfa4bde58c2b193b3a...", "expires_in_days": 90}
-
-# проверка токена
-curl -H "Authorization: Bearer nra_cc40a977a2b147cfa4bde58c2b193b3a" \
-  https://nora-apatsev.duckdns.org/v2/_catalog
-
-# Использовать токен для npm
-npm config set //nora-apatsev.duckdns.org:_authToken nra_cc40a977a2b147cfa4bde58c2b193b3a
-
-# Docker login с токеном (токен в качестве пароля, любое имя пользователя)
-docker login nora-apatsev.duckdns.org -u token -p nra_cc40a977a2b147cfa4bde58c2b193b3a
-```
-
-### RBAC
-
-NORA поддерживает три роли: `read` (чтение), `write` (чтение + запись), `admin` (всё + управление токенами). Токены создаются через API:
-
-```bash
-curl -X POST https://nora-apatsev.duckdns.org/api/tokens \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "password": "your-password",
-    "role": "write",
-    "ttl_days": 90,
-    "description": "ci-bot"
-  }'
-```
-
-Список и отзыв токенов:
-
-```bash
-# Список токенов
-curl -X POST https://nora-apatsev.duckdns.org/api/tokens/list \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "your-password"}'
-
-# Отзыв токена (по hash_prefix из списка)
-curl -X POST https://nora-apatsev.duckdns.org/api/tokens/revoke \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "your-password", "hash_prefix": "a1b2c3"}'
-```
+NORA поддерживает три роли: `read` (чтение), `write` (чтение + запись), `admin` (всё + управление токенами).
 
 ## Использование: примеры для каждого формата
 
