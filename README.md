@@ -936,19 +936,17 @@ cat <<'EOF' > blocklist.json
   ]
 }
 EOF
+```
 
 # Создаём ConfigMap для blocklist
+```
 kubectl create configmap nora-blocklist \
   --from-file=blocklist.json=blocklist.json
-
-# Создаём ConfigMap для allowlist (опционально)
-kubectl create configmap nora-allowlist \
-  --from-file=allowlist.json=allowlist.json
 ```
 
 Пример `allowlist.json`:
 
-```json
+cat <<'EOF' > allowlist.json
 {
   "version": 1,
   "mode": "default-deny",
@@ -966,6 +964,13 @@ kubectl create configmap nora-allowlist \
     }
   ]
 }
+EOF
+```
+
+# Создаём ConfigMap для allowlist (опционально)
+```
+kubectl create configmap nora-allowlist \
+  --from-file=allowlist.json=allowlist.json
 ```
 
 Helm-чарт (начиная с версии 0.4.0) монтирует файлы автоматически — достаточно указать `existingConfigMap` или `existingSecret`:
