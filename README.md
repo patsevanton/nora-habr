@@ -417,37 +417,6 @@ open https://nora-apatsev.duckdns.org/ui/
 
 После этого NORA доступна по адресу `https://nora-apatsev.duckdns.org`. Web UI покажет dashboard с 13 реестрами.
 
-### 2. TLS-сертификат ещё не выпущен (NET::ERR_CERT_AUTHORITY_INVALID)
-
-**Симптом:** браузер показывает «Ваше подключение не защищено» / `NET::ERR_CERT_AUTHORITY_INVALID`.
-
-**Причина:** cert-manager ещё не выпустил сертификат или Challenge не прошёл.
-
-```bash
-# Проверяем статус сертификата
-kubectl get certificates
-kubectl describe certificate nora-tls
-
-# Проверяем Challenge (должен быть valid)
-kubectl get challenges
-kubectl describe challenge
-
-# Проверяем Order
-kubectl get orders
-kubectl describe order
-```
-
-**Решения:**
-- Подождать 1–5 минут — Let's Encrypt ACME HTTP-01 challenge требует времени
-- Проверить, что ClusterIssuer в статусе Ready: `kubectl get clusterissuer letsencrypt-prod`
-- Проверить логи cert-manager: `kubectl logs -n cert-manager deploy/cert-manager`
-- Убедиться, что DNS-запись `nora-apatsev.duckdns.org` резолвится на правильный IP ingress-контроллера:
-  ```bash
-  dig nora-apatsev.duckdns.org +short
-  kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-  ```
-- Если cert-manager не может достучаться до `/.well-known/acme-challenge/` — проверить, что ingress-nginx работает и нет конфликтов Ingress-правил
-
 ## Использование: примеры для каждого формата
 
 ### Docker
@@ -840,6 +809,56 @@ EOF
 kubectl exec deploy/nora -- tar czf - /data | \
   ssh user@backup-server "cat > /backups/nora-$(date +%Y%m%d).tar.gz"
 ```
+
+## Trouleshooting
+
+### 1. NORA не стартует / под в CrashLoopBackOff
+
+```bash
+kubectl logs deploy/nora
+kubectl describe pod -l app.kubernetes.io/name=nora
+```
+
+Проверьте, что PVC создан и подключён: `kubectl get pvc`.
+
+### 2. TLS-сертификат не выпускается (NET::ERR_CERT_AUTHORITY_INVALID)
+
+**Симптом:** браузер показывает «Ваше подключение не защищено» / `NET::ERR_CERT_AUTHORITY_INVALID`.
+
+**Причина:** cert-manager ещё не выпустил сертификат или Challenge не прошёл.
+
+```bash
+kubectl get certificates
+kubectl describe certificate nora-tls
+kubectl get challenges
+kubectl describe challenge
+kubectl get orders
+kubectl describe order
+```
+
+**Решения:**
+- Подождать 1–5 минут — Let's Encrypt ACME HTTP-01 challenge требует времени
+- Проверить, что ClusterIssuer в статусе Ready: `kubectl get clusterissuer letsencrypt-prod`
+- Проверить логи cert-manager: `kubectl logs -n cert-manager deploy/cert-manager`
+- Убедиться, что DNS-запись `nora-apatsev.duckdns.org` резолвится на правильный IP ingress-контроллера:
+  ```bash
+  dig nora-apatsev.duckdns.org +short
+  kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+  ```
+- Если cert-manager не может достучаться до `/.well-known/acme-challenge/` — проверить, что ingress-nginx работает и нет конфликтов Ingress-правил
+
+### 3. Docker push / pull не работает
+
+```bash
+# Проверяем, что NORA отвечает
+curl https://nora-apatsev.duckdns.org/v2/
+
+# Проверяем ingress
+kubectl get ingress
+kubectl describe ingress nora
+```
+
+Убедитесь, что `proxy-body-size` не ограничивает размер образа (в values стоит `"0"` — без ограничения).
 
 ## Заключение
 
