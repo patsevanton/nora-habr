@@ -1,5 +1,5 @@
 resource "yandex_vpc_address" "addr" {
-  name      = "sentry-pip"
+  name      = "nora-pip"
   folder_id = local.folder_id
 
   external_ipv4_address {
@@ -8,15 +8,15 @@ resource "yandex_vpc_address" "addr" {
 }
 
 resource "yandex_dns_zone" "zone" {
-  name      = "sentry-dns-zone"
+  name      = "nora-dns-zone"
   folder_id = local.folder_id
   zone      = "apatsev.org.ru."
   public    = true
 }
 
-resource "yandex_dns_recordset" "sentry" {
+resource "yandex_dns_recordset" "nora" {
   zone_id = yandex_dns_zone.zone.id
-  name    = "sentry.apatsev.org.ru."
+  name    = "nora.apatsev.org.ru."
   type    = "A"
   ttl     = 200
   data    = [local.ingress_ip]

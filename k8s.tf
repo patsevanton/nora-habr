@@ -17,8 +17,8 @@ resource "time_sleep" "wait_sa" {
   ]
 }
 
-resource "yandex_kubernetes_cluster" "sentry" {
-  name       = "sentry"
+resource "yandex_kubernetes_cluster" "nora" {
+  name       = "nora"
   folder_id  = local.folder_id
   network_id = local.network_id
 
@@ -40,7 +40,7 @@ resource "yandex_kubernetes_cluster" "sentry" {
 resource "yandex_kubernetes_node_group" "k8s_node_group_a" {
   description = "Node group for Managed Kubernetes cluster in zone A"
   name        = "k8s-node-group-a"
-  cluster_id  = yandex_kubernetes_cluster.sentry.id
+  cluster_id  = yandex_kubernetes_cluster.nora.id
   version     = "1.33"
 
   scale_policy {
@@ -81,8 +81,8 @@ resource "yandex_kubernetes_node_group" "k8s_node_group_a" {
 
 provider "helm" {
   kubernetes = {
-    host                   = yandex_kubernetes_cluster.sentry.master[0].external_v4_endpoint
-    cluster_ca_certificate = yandex_kubernetes_cluster.sentry.master[0].cluster_ca_certificate
+    host                   = yandex_kubernetes_cluster.nora.master[0].external_v4_endpoint
+    cluster_ca_certificate = yandex_kubernetes_cluster.nora.master[0].cluster_ca_certificate
     exec = {
       api_version = "client.authentication.k8s.io/v1beta1"
       args        = ["k8s", "create-token"]
@@ -100,7 +100,7 @@ resource "helm_release" "traefik" {
   create_namespace = true
 
   depends_on = [
-    yandex_kubernetes_cluster.sentry,
+    yandex_kubernetes_cluster.nora,
     yandex_kubernetes_node_group.k8s_node_group_a
   ]
 
@@ -117,7 +117,7 @@ resource "helm_release" "traefik" {
 }
 
 output "k8s_cluster_credentials" {
-  value = "yc managed-kubernetes cluster get-credentials --id ${yandex_kubernetes_cluster.sentry.id} --external --force"
+  value = "yc managed-kubernetes cluster get-credentials --id ${yandex_kubernetes_cluster.nora.id} --external --force"
 }
 
 output "ingress_public_ip" {
