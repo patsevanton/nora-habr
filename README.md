@@ -417,6 +417,91 @@ open https://nora-apatsev.duckdns.org/ui/
 
 После этого NORA доступна по адресу `https://nora-apatsev.duckdns.org`. Web UI покажет dashboard с 13 реестрами.
 
+## Аутентификация
+
+По умолчанию NORA работает без аутентификации (анонимный доступ на чтение). Для включения авторизации выполните следующие шаги:
+
+### Шаг 1. Создаём htpasswd-файл
+
+```bash
+htpasswd -c users.htpasswd admin
+# Введите пароль дважды
+```
+
+Формат `htpasswd` совместим с Apache HTTPD. Для добавления дополнительных пользователей (без флага `-c`, который перезаписывает файл):
+
+```bash
+htpasswd users.htpasswd developer
+```
+
+### Шаг 2. Создаём Kubernetes Secret
+
+```bash
+kubectl create secret generic nora-htpasswd \
+  --from-file=users.htpasswd=./users.htpasswd
+```
+
+### Шаг 3. Настраиваем helm-values.yaml
+
+В файле `helm-values.yaml` уже включена авторизация. Убедитесь, что секции `env`, `extraVolumeMounts` и `extraVolumes` выглядят так:
+
+```yaml
+env:
+  NORA_PUBLIC_URL: "https://nora-apatsev.duckdns.org"
+  NORA_AUTH_ENABLED: "true"
+
+extraVolumeMounts:
+  - name: htpasswd
+    mountPath: /data/users.htpasswd
+    subPath: users.htpasswd
+
+extraVolumes:
+  - name: htpasswd
+    secret:
+      secretName: nora-htpasswd
+```
+
+### Шаг 4. Применяем конфигурацию
+
+```bash
+helm upgrade nora oci://ghcr.io/getnora-io/helm/nora -f helm-values.yaml
+```
+
+Если NORA устанавливается впервые:
+
+```bash
+helm install nora oci://ghcr.io/getnora-io/helm/nora -f helm-values.yaml
+```
+
+### Использование токенов
+
+```bash
+# Получить токен
+curl -u admin:password https://nora-apatsev.duckdns.org/auth/token
+# {"token": "nora_tk_abc123..."}
+
+# Использовать токен для npm
+npm config set //nora-apatsev.duckdns.org:_authToken nora_tk_abc123
+
+# Docker login
+docker login nora-apatsev.duckdns.org -u admin -p nora_tk_abc123
+
+# curl
+curl -H "Authorization: Bearer nora_tk_abc123" \
+  https://nora-apatsev.duckdns.org/v2/_catalog
+```
+
+### RBAC
+
+NORA поддерживает три роли: `read` (чтение), `write` (чтение + запись), `admin` (всё + управление токенами). Токены создаются через API:
+
+```bash
+curl -X POST -u admin:password \
+  -H "Content-Type: application/json" \
+  -d '{"name": "ci-bot", "role": "write"}' \
+  https://nora-apatsev.duckdns.org/api/v1/tokens
+```
+
 ## Использование: примеры для каждого формата
 
 ### Docker
@@ -649,91 +734,6 @@ conan install zlib/1.3.1@ --remote=nora
 ```bash
 export PUB_HOSTED_URL=https://nora-apatsev.duckdns.org/pub
 dart pub get
-```
-
-## Аутентификация
-
-По умолчанию NORA работает без аутентификации (анонимный доступ на чтение). Для включения авторизации выполните следующие шаги:
-
-### Шаг 1. Создаём htpasswd-файл
-
-```bash
-htpasswd -c users.htpasswd admin
-# Введите пароль дважды
-```
-
-Формат `htpasswd` совместим с Apache HTTPD. Для добавления дополнительных пользователей (без флага `-c`, который перезаписывает файл):
-
-```bash
-htpasswd users.htpasswd developer
-```
-
-### Шаг 2. Создаём Kubernetes Secret
-
-```bash
-kubectl create secret generic nora-htpasswd \
-  --from-file=users.htpasswd=./users.htpasswd
-```
-
-### Шаг 3. Настраиваем helm-values.yaml
-
-В файле `helm-values.yaml` уже включена авторизация. Убедитесь, что секции `env`, `extraVolumeMounts` и `extraVolumes` выглядят так:
-
-```yaml
-env:
-  NORA_PUBLIC_URL: "https://nora-apatsev.duckdns.org"
-  NORA_AUTH_ENABLED: "true"
-
-extraVolumeMounts:
-  - name: htpasswd
-    mountPath: /data/users.htpasswd
-    subPath: users.htpasswd
-
-extraVolumes:
-  - name: htpasswd
-    secret:
-      secretName: nora-htpasswd
-```
-
-### Шаг 4. Применяем конфигурацию
-
-```bash
-helm upgrade nora oci://ghcr.io/getnora-io/helm/nora -f helm-values.yaml
-```
-
-Если NORA устанавливается впервые:
-
-```bash
-helm install nora oci://ghcr.io/getnora-io/helm/nora -f helm-values.yaml
-```
-
-### Использование токенов
-
-```bash
-# Получить токен
-curl -u admin:password https://nora-apatsev.duckdns.org/auth/token
-# {"token": "nora_tk_abc123..."}
-
-# Использовать токен для npm
-npm config set //nora-apatsev.duckdns.org:_authToken nora_tk_abc123
-
-# Docker login
-docker login nora-apatsev.duckdns.org -u admin -p nora_tk_abc123
-
-# curl
-curl -H "Authorization: Bearer nora_tk_abc123" \
-  https://nora-apatsev.duckdns.org/v2/_catalog
-```
-
-### RBAC
-
-NORA поддерживает три роли: `read` (чтение), `write` (чтение + запись), `admin` (всё + управление токенами). Токены создаются через API:
-
-```bash
-curl -X POST -u admin:password \
-  -H "Content-Type: application/json" \
-  -d '{"name": "ci-bot", "role": "write"}' \
-  https://nora-apatsev.duckdns.org/api/v1/tokens
 ```
 
 ## Air-gapped: работа в изолированных средах
