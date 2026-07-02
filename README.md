@@ -320,8 +320,8 @@ kubectl get clusterissuer letsencrypt-prod
 ### Шаг 1. Создаём htpasswd-файл
 
 ```bash
-htpasswd -c users.htpasswd admin
-# Введите пароль дважды
+htpasswd -Bbc users.htpasswd admin admin
+# -B = bcrypt (обязательно для NORA), -b = пароль из аргумента, -c = создать файл
 ```
 
 ### Шаг 2. Создаём Kubernetes Secret
@@ -370,19 +370,16 @@ persistence:
   enabled: true
   size: 10Gi
 
-env:
-  NORA_PUBLIC_URL: "https://nora-apatsev.duckdns.org"
-  NORA_AUTH_ENABLED: "true"
-
-extraVolumeMounts:
-  - name: htpasswd
-    mountPath: /data/users.htpasswd
-    subPath: users.htpasswd
-
-extraVolumes:
-  - name: htpasswd
-    secret:
-      secretName: nora-htpasswd
+config:
+  server:
+    public_url: "https://nora-apatsev.duckdns.org"
+  registries:
+    enable: "all"
+  auth:
+    enabled: true
+    htpasswd:
+      existingSecret: nora-htpasswd
+      secretKey: users.htpasswd
 
 resources:
   limits:
@@ -395,14 +392,13 @@ EOF
 ```
 
 Указываем только то, что отличается от дефолтов Nora:
-- `NORA_PUBLIC_URL` — внешний URL, который NORA будет вставлять в download-ссылки (обязательно за reverse proxy)
-- `NORA_AUTH_ENABLED` — включает аутентификацию по htpasswd
-- `extraVolumeMounts` / `extraVolumes` — монтируют htpasswd-файл из Kubernetes Secret
+- `config.server.public_url` — внешний URL, который NORA будет вставлять в download-ссылки (обязательно за reverse proxy)
+- `config.auth.enabled` — включает аутентификацию по htpasswd
+- `config.auth.htpasswd.existingSecret` — ссылка на Kubernetes Secret с htpasswd-файлом (chart сам монтирует его в контейнер)
 - `proxy-body-size: "0"` — снимает ограничение на размер тела запроса (нужно для больших Docker-образов)
 - `proxy-read-timeout: "600"` — увеличенный таймаут для больших загрузок
 - `cert-manager.io/cluster-issuer` — аннотация для автоматического выпуска TLS-сертификата через cert-manager
 - `tls` — конфигурация TLS с указанием Secret для сертификата
-- `image`, `NORA_HOST`, `NORA_PORT`, `RUST_LOG`, `service`, `healthcheck` — всё это уже имеет нужные значения по умолчанию в контейнере Nora
 
 ### Устанавливаем
 

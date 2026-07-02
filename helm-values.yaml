@@ -20,19 +20,16 @@ persistence:
   enabled: true
   size: 10Gi
 
-env:
-  NORA_PUBLIC_URL: "https://nora-apatsev.duckdns.org"
-  NORA_AUTH_ENABLED: "true"
-
-extraVolumeMounts:
-  - name: htpasswd
-    mountPath: /data/users.htpasswd
-    subPath: users.htpasswd
-
-extraVolumes:
-  - name: htpasswd
-    secret:
-      secretName: nora-htpasswd
+config:
+  server:
+    public_url: "https://nora-apatsev.duckdns.org"
+  registries:
+    enable: "all"
+  auth:
+    enabled: true
+    htpasswd:
+      existingSecret: nora-htpasswd
+      secretKey: users.htpasswd
 
 resources:
   limits:
