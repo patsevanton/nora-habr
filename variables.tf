@@ -3,3 +3,14 @@ variable "folder_id" {
   type        = string
   default     = ""
 }
+
+variable "duckdns_domain" {
+  description = "DuckDNS subdomain (e.g. nora-habr)"
+  type        = string
+}
+
+variable "duckdns_token" {
+  description = "DuckDNS account token"
+  type        = string
+  sensitive   = true
+}
