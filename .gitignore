@@ -48,3 +48,4 @@ node_modules/
 package-lock.json
 users.htpasswd
 package.json
+test-npm-pkg/.npmrc
