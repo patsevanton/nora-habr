@@ -407,7 +407,7 @@ EOF
 ### Устанавливаем
 
 ```bash
-helm install nora nora/nora -f helm-values.yaml
+helm upgrade --install nora nora/nora -f helm-values.yaml
 ```
 
 ### Проверяем
