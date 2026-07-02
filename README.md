@@ -306,7 +306,7 @@ kubectl get clusterissuer letsencrypt-prod
 
 ### Настройка в Helm values NORA
 
-Ingress в `helm-values.yaml` уже настроен на использование cert-manager:
+Настройка cert-manager в Ingress в `helm-values.yaml`:
 
 ```yaml
 ingress:
