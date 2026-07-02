@@ -425,11 +425,14 @@ open https://nora-apatsev.duckdns.org/ui/
 # Логин (если включена аутентификация)
 docker login nora-apatsev.duckdns.org
 
+# Берём готовый публичный образ (или собираем свой из Dockerfile)
+docker pull nginx:alpine
+
 # Пушим образ
-docker tag myapp:1.0 nora-apatsev.duckdns.org/myapp:1.0
+docker tag nginx:alpine nora-apatsev.duckdns.org/myapp:1.0
 docker push nora-apatsev.duckdns.org/myapp:1.0
 
-# Пуллим образ
+# Пуллим образ из NORA
 docker pull nora-apatsev.duckdns.org/myapp:1.0
 
 # Список всех репозиториев
