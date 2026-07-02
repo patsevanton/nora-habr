@@ -736,9 +736,18 @@ cat <<'EOF' > test-cargo-pkg/.cargo/config.toml
 [registries.nora]
 index = "sparse+https://nora-apatsev.duckdns.org/cargo/"
 
+[registry]
+global-credential-providers = ["cargo:token"]
+
 [source.crates-io]
 replace-with = "nora"
 EOF
+```
+
+Авторизация в реестре:
+
+```bash
+cargo login --registry nora nra_cc40a977a2b147cfa4bde58c2b193b3a
 ```
 
 Создайте `Cargo.toml` с описанием пакета:
