@@ -252,9 +252,8 @@ helm repo update
 
 ### Создаём values-файл
 
-Файл `helm-values.yaml`:
-
-```yaml
+```bash
+cat <<EOF > helm-values.yaml
 image:
   repository: ghcr.io/getnora-io/nora
   tag: latest
@@ -295,6 +294,7 @@ resources:
 service:
   type: ClusterIP
   port: 4000
+EOF
 ```
 
 Ключевые моменты:
