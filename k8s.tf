@@ -115,6 +115,10 @@ resource "helm_release" "ingress_nginx" {
   ]
 }
 
+output "k8s_cluster_id" {
+  value = yandex_kubernetes_cluster.nora.id
+}
+
 output "k8s_cluster_credentials" {
   value = "yc managed-kubernetes cluster get-credentials --id ${yandex_kubernetes_cluster.nora.id} --external --force"
 }
