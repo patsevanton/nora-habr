@@ -342,7 +342,8 @@ helm repo update
 
 ### Создаём values-файл
 
-```yaml
+```bash
+cat <<EOF > helm-values.yaml
 ingress:
   enabled: true
   className: nginx
@@ -375,6 +376,7 @@ resources:
   requests:
     memory: 128Mi
     cpu: "0.25"
+EOF
 ```
 
 Указываем только то, что отличается от дефолтов Nora:
