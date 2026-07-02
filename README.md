@@ -653,9 +653,16 @@ mvn deploy -s settings.xml
 
 ### Helm OCI
 
-Helm-чарты хранятся через Docker/OCI endpoint:
+Helm-чарты хранятся через Docker/OCI endpoint. Для тестирования создайте и запакуйте чарт (директория `test-helm-pkg` уже есть в репозитории):
 
 ```bash
+# Создаём чарт (если ещё нет)
+cd test-helm-pkg
+helm create mychart
+
+# Запаковываем в .tgz
+helm package mychart
+
 # Публикация чарта
 helm push mychart-0.1.0.tgz oci://nora-apatsev.duckdns.org/helm
 
