@@ -50,3 +50,4 @@ users.htpasswd
 package.json
 test-npm-pkg/.npmrc
 python-pkg-example/dist/*
+test-maven-pkg/target/
